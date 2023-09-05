@@ -1,12 +1,12 @@
 {
-  "name": "lsp-sample",
+  "name": "lsp-sample-future-test",
   "description": "A language server example",
   "author": "Future Corporation",
   "license": "MIT",
   "version": "1.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-extension-samples"
+    "url": "https://github.com/ppputtyo/vscode-extension-publish-test"
   },
   "publisher": "Future",
   "categories": [],
