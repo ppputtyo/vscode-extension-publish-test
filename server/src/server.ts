@@ -304,7 +304,7 @@ connection.onDocumentFormatting((params) => {
 // コマンド実行時に行う処理
 connection.onExecuteCommand((params) => {
   if (
-    params.command !== "lsp-sample.executeReverse" ||
+    params.command !== "lsp-sample-future-test.executeReverse" ||
     // params.command !== "lsp-sample.reverse" ||
     params.arguments == null
   ) {

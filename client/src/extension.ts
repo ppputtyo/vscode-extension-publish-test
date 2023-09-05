@@ -69,13 +69,13 @@ export function activate(context: ExtensionContext) {
 
   // reverse実行時にserverにexecuteReverseコマンドを送信する
   context.subscriptions.push(
-    commands.registerCommand("lsp-sample.reverse", async () => {
+    commands.registerCommand("lsp-sample-future-test.reverse", async () => {
       const uri = window.activeTextEditor.document.uri;
       const version = window.activeTextEditor.document.version;
       const selections = window.activeTextEditor.selections;
 
       await client.sendRequest(ExecuteCommandRequest.type, {
-        command: "lsp-sample.executeReverse",
+        command: "lsp-sample-future-test.executeReverse",
         arguments: [uri, version, selections],
       });
     })
