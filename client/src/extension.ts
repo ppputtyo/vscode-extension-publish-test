@@ -4,13 +4,14 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from "path";
-import { workspace, ExtensionContext } from "vscode";
+import { workspace, ExtensionContext, window, commands } from "vscode";
 
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
   TransportKind,
+  ExecuteCommandRequest,
 } from "vscode-languageclient/node";
 
 let client: LanguageClient;
@@ -39,11 +40,23 @@ export function activate(context: ExtensionContext) {
   // 対象とする言語。今回はplaintext
   const clientOptions: LanguageClientOptions = {
     // Register the server for plain text documents
-    documentSelector: [{ scheme: "file", language: "plaintext" }],
+    documentSelector: [
+      { scheme: "file", language: "plaintext" },
+      { scheme: "untitled", language: "plaintext" },
+    ],
     synchronize: {
       // Notify the server about file changes to '.clientrc files contained in the workspace
       fileEvents: workspace.createFileSystemWatcher("**/.clientrc"),
     },
+    // middleware: {
+    //   executeCommand: async (command, args, next) => {
+    //     const uri = window.activeTextEditor.document.uri;
+    //     const version = window.activeTextEditor.document.version;
+    //     const selections = window.activeTextEditor.selections;
+
+    //     return next(command, [...args, uri, version, selections]);
+    //   },
+    // },
   };
 
   // Create the language client and start the client.
@@ -52,6 +65,20 @@ export function activate(context: ExtensionContext) {
     "Language Server Example",
     serverOptions,
     clientOptions
+  );
+
+  // reverse実行時にserverにexecuteReverseコマンドを送信する
+  context.subscriptions.push(
+    commands.registerCommand("lsp-sample.reverse", async () => {
+      const uri = window.activeTextEditor.document.uri;
+      const version = window.activeTextEditor.document.version;
+      const selections = window.activeTextEditor.selections;
+
+      await client.sendRequest(ExecuteCommandRequest.type, {
+        command: "lsp-sample.executeReverse",
+        arguments: [uri, version, selections],
+      });
+    })
   );
 
   // Start the client. This will also launch the server

@@ -65,10 +65,11 @@ jobs:
           name: ${{ env.target }}
           path: "*.vsix"
 
+  # 成果物をダウンロードしてpublish
   publish:
     runs-on: ubuntu-latest
     needs: build
-    if: success() 
+    if: success()
     steps:
       - uses: actions/download-artifact@v2
       - run: npx vsce publish --packagePath $(find . -iname *.vsix)

@@ -15,6 +15,13 @@ import {
   TextDocumentPositionParams,
   TextDocumentSyncKind,
   InitializeResult,
+  //追加
+  CodeAction,
+  TextEdit,
+  TextDocumentEdit,
+  CodeActionKind,
+  Position,
+  Range,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -54,6 +61,14 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: {
         resolveProvider: true,
       },
+      // コードアクション
+      codeActionProvider: true,
+      // フォーマット
+      documentFormattingProvider: true,
+      // コマンド
+      // executeCommandProvider: {
+      //   commands: ["lsp-sample.reverse"],
+      // },
     },
   };
   if (hasWorkspaceFolderCapability) {
@@ -220,6 +235,135 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
   }
 
   return item;
+});
+
+connection.onCodeAction((params) => {
+  const only: string | undefined =
+    params.context.only != null && params.context.only.length > 0
+      ? params.context.only[0]
+      : undefined;
+
+  if (only !== CodeActionKind.QuickFix) {
+    return;
+  }
+
+  // この拡張機能が生成した警告のみを対象とする
+  const diagnostics = params.context.diagnostics.filter(
+    (diag) => diag.source === "ex"
+  );
+
+  // uriからドキュメントを取得
+  const textDocument = documents.get(params.textDocument.uri);
+  if (textDocument == null || diagnostics.length === 0) {
+    return [];
+  }
+
+  const codeActions: CodeAction[] = [];
+
+  diagnostics.forEach((diag) => {
+    const title = "Fix to lower case";
+    // 警告範囲のテキストを取得
+    const originalText = textDocument.getText(diag.range);
+    // 警告範囲のテキストを小文字に変換したものに置換
+    const edits = [TextEdit.replace(diag.range, originalText.toLowerCase())];
+    const editPattern = {
+      documentChanges: [
+        TextDocumentEdit.create(
+          { uri: textDocument.uri, version: textDocument.version },
+          edits
+        ),
+      ],
+    };
+    // コードアクションを生成
+    const fixAction = CodeAction.create(
+      title,
+      editPattern,
+      CodeActionKind.QuickFix
+    );
+    // コードアクションと警告を関連付ける
+    fixAction.diagnostics = [diag];
+    codeActions.push(fixAction);
+  });
+
+  return codeActions;
+});
+
+connection.onDocumentFormatting((params) => {
+  // uriからドキュメントを取得
+  const textDocument = documents.get(params.textDocument.uri);
+  if (textDocument == null) {
+    return;
+  }
+  // ドキュメントの行数を取得
+  const lineCount = textDocument.lineCount;
+  const insertText = `Formatting has been executed. (lineCount: ${lineCount})\n`;
+
+  return [TextEdit.insert(Position.create(0, 0), insertText)];
+});
+
+// コマンド実行時に行う処理
+connection.onExecuteCommand((params) => {
+  if (
+    params.command !== "lsp-sample.executeReverse" ||
+    // params.command !== "lsp-sample.reverse" ||
+    params.arguments == null
+  ) {
+    return;
+  }
+  const uri = params.arguments[0].external;
+  // uriからドキュメントを取得
+  const textDocument = documents.get(uri);
+  if (textDocument == null) {
+    return;
+  }
+  // バージョン不一致の場合はアーリーリターン
+  const version = params.arguments[1];
+  if (textDocument.version !== version) {
+    return;
+  }
+
+  const selections = params.arguments[2];
+  const changes: TextEdit[] = [];
+
+  // 全ての選択範囲に対して実行
+  for (const selection of selections) {
+    // テキストを取得
+    const text = textDocument.getText(selection);
+    if (text.length === 0) {
+      continue;
+    }
+    // 反転
+    const reversed = text.split("").reverse().join("");
+
+    changes.push(TextEdit.replace(selection, reversed));
+  }
+
+  if (changes.length === 0) {
+    // テキスト全体を取得
+    const text = textDocument.getText();
+    // 反転
+    const reversed = text.split("").reverse().join("");
+
+    changes.push(
+      TextEdit.replace(
+        Range.create(
+          Position.create(0, 0),
+          textDocument.positionAt(text.length)
+        ),
+        reversed
+      )
+    );
+  }
+
+  // 変更を適用
+  connection.workspace.applyEdit({
+    documentChanges: [
+      TextDocumentEdit.create(
+        { uri: textDocument.uri, version: textDocument.version },
+        changes
+      ),
+    ],
+  });
 });
 
 // Make the text document manager listen on the connection
